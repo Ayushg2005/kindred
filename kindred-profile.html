@@ -485,6 +485,28 @@
   gsap.from('#matchCard',       { y: 40, opacity: 0, duration: 0.55, ease: 'power3.out', delay: 0.35 });
   gsap.from('#activityCard',    { y: 40, opacity: 0, duration: 0.55, ease: 'power3.out', delay: 0.45 });
 
+  // ── AUTH & STATE ──
+  const token = localStorage.getItem('kindred_token');
+  if (!token) {
+    window.location.href = 'kindred-login.html';
+  } else {
+    fetch('/auth/me', { headers: { 'Authorization': `Bearer ${token}` } })
+      .then(r => { if (!r.ok) throw new Error('Not auth'); return r.json(); })
+      .then(me => {
+         if (me.phantom_alias) {
+            document.querySelector('.topbar-alias span').textContent = me.phantom_alias;
+            document.querySelector('.phantom-name').innerHTML = `Phantom <em>#${me.phantom_alias.split('#')[1]}</em>`;
+            const initial = me.phantom_alias.split('#')[1][0] || 'A';
+            document.querySelector('.phantom-glyph').textContent = initial;
+            if (me.bio) document.getElementById('bioDisplay').textContent = me.bio;
+         }
+      })
+      .catch(e => {
+        console.error(e);
+        window.location.href = 'kindred-login.html';
+      });
+  }
+
   // STAT COUNTERS
   function animateCount(el, target, suffix='') {
     const dur = 1200, startTime = performance.now();
