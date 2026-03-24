@@ -499,6 +499,24 @@
             const initial = me.phantom_alias.split('#')[1][0] || 'A';
             document.querySelector('.phantom-glyph').textContent = initial;
             if (me.bio) document.getElementById('bioDisplay').textContent = me.bio;
+            
+            // Render real interests simply (clear mockups)
+            const grid = document.getElementById('interestsGrid');
+            grid.innerHTML = '';
+            (me.interests || []).forEach(int => {
+               grid.innerHTML += `<div class="interest-tag removable">${int}</div>`;
+            });
+
+            // Hide the fake hardcoded timeline and matches so it doesn't look like someone else's profile
+            const matchCard = document.getElementById('matchCard');
+            const activityCard = document.getElementById('activityCard');
+            if (matchCard) matchCard.style.display = 'none';
+            if (activityCard) activityCard.style.display = 'none';
+            
+            // Clear stats mockup
+            document.getElementById('statMatches').textContent = '-';
+            document.getElementById('statChats').textContent = '-';
+            document.getElementById('statScore').textContent = '-%';
          }
       })
       .catch(e => {
