@@ -88,4 +88,44 @@ router.get('/dashboard-data', async (req, res) => {
     }
 });
 
+// POST /admin/delete-users — deletes specific users by username (cascade handles the rest)
+router.post('/delete-users', async (req, res) => {
+    try {
+        const { usernames } = req.body;
+        if (!usernames || !Array.isArray(usernames) || usernames.length === 0) {
+            return res.status(400).json({ error: 'Provide a "usernames" array in request body' });
+        }
+        const result = await db.query(
+            `DELETE FROM users WHERE username = ANY($1::text[]) RETURNING username, phantom_alias`,
+            [usernames]
+        );
+        res.json({ deleted: result.rows, count: result.rowCount });
+    } catch (err) {
+        console.error('Delete users error:', err);
+        res.status(500).json({ error: 'Failed to delete users' });
+    }
+});
+
+// GET /admin/nuke-recent?hours=24 — deletes all data created in last N hours (default 24h)
+router.get('/nuke-recent', async (req, res) => {
+    const hours = parseInt(req.query.hours) || 24;
+    const client = await require('../db')._pool
+        ? require('../db')._pool.connect()
+        : null;
+    try {
+        const since = new Date(Date.now() - hours * 60 * 60 * 1000).toISOString();
+        // Find user IDs to delete
+        const usersRes = await db.query(`SELECT id, username FROM users WHERE created_at >= $1`, [since]);
+        const ids = usersRes.rows.map(r => r.id);
+        if (ids.length === 0) return res.json({ message: 'No recent users found', deleted: [] });
+
+        // Delete (cascade handles swipes, matches, messages, conversations via FK)
+        const delRes = await db.query(`DELETE FROM users WHERE id = ANY($1::int[]) RETURNING username, phantom_alias`, [ids]);
+        res.json({ deleted: delRes.rows, count: delRes.rowCount, since });
+    } catch (err) {
+        console.error('Nuke recent error:', err);
+        res.status(500).json({ error: 'Failed to nuke recent data' });
+    }
+});
+
 module.exports = router;
